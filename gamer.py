@@ -4,6 +4,15 @@ import os
 import gym
 import numpy
 import torch
+import Game.py
+
+#game dependency
+import random
+from treys import Card, Deck
+from enum import Enum
+from treys import Evaluator
+from player import Move
+
 
 from .abstract_game import AbstractGame
 
@@ -132,9 +141,7 @@ class Game(AbstractGame):
     """
 
     def __init__(self, seed=None):
-        self.env = gym.make("CartPole-v1")
-        if seed is not None:
-            self.env.seed(seed)
+        self.env = Connect4()
 
     def step(self, action):
         """
@@ -145,8 +152,16 @@ class Game(AbstractGame):
         Returns:
             The new observation, the reward and a boolean if the game has ended.
         """
-        observation, reward, done, _ = self.env.step(action)
-        return numpy.array([[observation]]), reward, done
+        observation, reward, done = self.env.step(action)
+        return observation, reward * 10, done
+
+    def to_play(self):
+        """
+        Return the current player.
+        Returns:
+            The current player, it should be an element of the players list in the config. 
+        """
+        return self.env.to_play()
 
     def legal_actions(self):
         """
@@ -154,11 +169,11 @@ class Game(AbstractGame):
         the whole action space. At each turn, the game have to be able to handle one of returned actions.
         
         For complex game where calculating legal moves is too long, the idea is to define the legal actions
-        equal to the action space but to return a negative reward if the action is illegal.        
+        equal to the action space but to return a negative reward if the action is illegal.
         Returns:
             An array of integers, subset of the action space.
         """
-        return list(range(2))
+        return self.env.legal_actions()
 
     def reset(self):
         """
@@ -167,13 +182,7 @@ class Game(AbstractGame):
         Returns:
             Initial observation of the game.
         """
-        return numpy.array([[self.env.reset()]])
-
-    def close(self):
-        """
-        Properly close the game.
-        """
-        self.env.close()
+        return self.env.reset()
 
     def render(self):
         """
@@ -181,6 +190,27 @@ class Game(AbstractGame):
         """
         self.env.render()
         input("Press enter to take a step ")
+
+    def human_to_action(self):
+        """
+        For multiplayer games, ask the user for a legal action
+        and return the corresponding action number.
+        Returns:
+            An integer from the action space.
+        """
+        choice = input(f"Enter the column to play for the player {self.to_play()}: ")
+        while choice not in [str(action) for action in self.legal_actions()]:
+            choice = input("Enter another column : ")
+        return int(choice)
+
+    def expert_agent(self):
+        """
+        Hard coded agent that MuZero faces to assess his progress in multiplayer games.
+        It doesn't influence training
+        Returns:
+            Action as an integer to take in the current game state
+        """
+        return self.env.expert_action()
 
     def action_to_string(self, action_number):
         """
@@ -190,8 +220,87 @@ class Game(AbstractGame):
         Returns:
             String representing the action.
         """
-        actions = {
-            0: "Push cart to the left",
-            1: "Push cart to the right",
-        }
-        return f"{action_number}. {actions[action_number]}"
+        return f"Play column {action_number + 1}"
+
+
+class NLHU:
+	def __init__(self):
+		self.dealer_is_player1 = True
+		self.initial_blind = 100
+		self.curr_blind = self.initial_blind
+		self.deck = Deck()
+
+		self.player1 = player1
+		self.player2 = player2
+
+	def start_round(self):
+		print("Starting the round")
+		self.dealer_is_player1 = not self.dealer_is_player1
+		self.deck.shuffle()
+
+		self.player1.set_hand(self.deck.draw(2))
+		self.player2.set_hand(self.deck.draw(2))
+		winner = self.betting_round()
+		if (winner is not None):
+			return winner
+
+		# flop
+		self.add_community_cards(self, 3)
+		winner = self.betting_round()
+		if (winner is not None):
+			return winner
+
+		# turn
+		self.add_community_cards(self, 3)
+		winner = self.betting_round()
+		if (winner is not None):
+			return winner
+
+		# river
+		self.add_community_cards(self, 3)
+		winner = self.betting_round()
+		if (winner is not None):
+			return winner
+
+		return self.determine_winner()
+
+	def determine_winner():
+		player1HandStrength = self.player1.get_hand_strength()
+		player2HandStrength = self.player2.get_hand_strength()
+		if (player1HandStrength > player2HandStrength):
+			return self.player1
+		elif (player2HandStrength > player1HandStrength):
+			return self.player2
+		return None
+
+	def add_community_cards(self, num_cards):
+		cards = self.deck.draw(num_cards)
+		self.player1.add_community_cards(cards)
+		self.player2.add_community_cards(cards)
+
+
+	# return None for continue, otherwise return player object of winner
+	# def make_decision(self, check_amount):
+	def betting_round(self):
+		if (not self.player1.can_bet() or not self.player2.can_bet()):
+			return None
+		current_raise_amount = 0
+		turn = not self.dealer_is_player1
+		last_move = None
+		while (True):
+			current_player = self.player1 if turn else self.player2 
+			other_player = self.player2 if turn else self.player1
+			# (move, int)
+			result = current_player.make_move(current_raise_amount)
+			if (result[0] == Move.FOLD):
+				return other_player
+			elif (result[0] == Move.CHECK):
+				# no winner determined
+				if (last_move == Move.CHECK or last_move == Move.RAISE):
+					return None
+			elif (result[0] == Move.RAISE):
+				current_raise_amount = result[1]
+			last_move = result[0]
+			turn = not turn
+    def to_play(self):
+        return 0 if self.player == 1 else 1
