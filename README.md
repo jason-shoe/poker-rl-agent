@@ -1,4 +1,5 @@
 # poker-rl-agent
 
 poker.py
-https://github.com/annaymj/Python-Code/blob/master/Poker.pybbb0k
+https://github.com/gollum18/Poker-Project
+# poker-rl-agent
