@@ -5,10 +5,10 @@ from treys import Card
 import random
 
 class Move(Enum):
-	CHECK = 1
-	RAISE = 2
-	FOLD = 3
-	ALLIN = 4
+	CHECK = 0
+	RAISE = 3
+	FOLD = 1
+	ALLIN = 2
 
 class GenericPlayer(ABC):
 	def __init__(self, name, chipcount):
@@ -53,9 +53,9 @@ class GenericPlayer(ABC):
 	def set_hand(self, cards):
 		self.hand = cards
 	def print_hand(self):
-		print(Card.print_pretty_cards(self.hand))
+		print('%10s' % (self.name), Card.print_pretty_cards(self.hand))
 	def print_community_cards(self):
-		print(Card.print_pretty_cards(self.community_cards))
+		print('%10s' % ("Community"), Card.print_pretty_cards(self.community_cards))
 
 	def add_community_cards(self, cards):
 		self.community_cards += cards;
@@ -88,7 +88,7 @@ class GenericPlayer(ABC):
 		return valid_moves
 	def make_move(self, raise_amount, opp_current_bet):
 		move = self.make_decision(raise_amount, opp_current_bet)
-		print('%s is doing ' % (self.name), move)
+		print('%10s is doing ' % (self.name), move[0].name, move[1])
 		if (move[0] == Move.CHECK):
 			self.make_bet(raise_amount)
 		elif (move[0] == Move.RAISE):
@@ -152,7 +152,6 @@ class BotOne(GenericPlayer):
 		# one hot encoding of current state
 		# dimension 4
 		current_stage = [
-							1 if len(self.community_cards) == 0 else 0,
 							1 if len(self.community_cards) == 3 else 0,
 							1 if len(self.community_cards) == 4 else 0,
 							1 if len(self.community_cards) == 5 else 0,
@@ -163,7 +162,8 @@ class BotOne(GenericPlayer):
 		my_investment = self.current_bet
 		opp_investment = opp_current_bet
 		pot_odds = raise_amount / (opp_current_bet + self.current_bet) if opp_current_bet + self.current_bet != 0 else 0
-		return current_stage + [hand_equity, my_investment, opp_investment, pot_odds]
+		chipcount = self.chipcount
+		return current_stage + [hand_equity, my_investment, opp_investment, pot_odds, chipcount, raise_amount]
 # class BotPlayer(GenericPlayer):
 	
 # 	def make_decision(self, raise_amount):
